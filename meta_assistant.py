@@ -3,10 +3,13 @@ import logging
 import os
 import subprocess
 import tkinter as tk
+from dataclasses import dataclass
 from os import startfile
 from pathlib import Path
 from sys import argv, executable
 from tkinter import filedialog
+from typing import Any, Callable, Optional
+
 from winreg import (
     HKEY_CURRENT_USER,
     KEY_SET_VALUE,
@@ -18,7 +21,6 @@ from winreg import (
 
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
-from typing import Any, TypedDict
 
 # --- Configuration ---
 APP_NAME = "AssistantLauncher"
@@ -42,106 +44,127 @@ LOG_FILE = APP_DATA_DIR / "assistant.log"
 ICON_FILE = APP_DATA_DIR / "assistant.ico"
 EXE_ICON_FILE = APP_EXE_PATH.parent / "assistant.ico"
 
-class Config(TypedDict):
-    target_dir: str
-    ignore_dirs: list[str]
+PY_EXTS = (".py", ".pyw")
 
 
-def _noop(*_args: Any, **_kwargs: Any):
+def _noop(*_args: Any, **_kwargs: Any) -> None:
     return None
 
 
-class AssistantApp:
-    def __init__(self):
-        self._setup_storage()
+def _safe_str_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [s for s in (str(x).strip() for x in value) if s]
+
+
+@dataclass
+class Config:
+    target_dir: Path
+    ignore_dirs: set[str]
+
+    @staticmethod
+    def default() -> "Config":
+        return Config(
+            target_dir=DEFAULT_TARGET_DIR,
+            ignore_dirs=set(DEFAULT_IGNORE_DIRS),
+        )
+
+    @staticmethod
+    def from_json(data: dict[str, Any]) -> "Config":
+        target_raw = data.get("target_dir", str(DEFAULT_TARGET_DIR))
+        ignore_raw = data.get("ignore_dirs", list(DEFAULT_IGNORE_DIRS))
+
+        target = Path(target_raw) if isinstance(target_raw, str) else DEFAULT_TARGET_DIR
+        ignore = {d.lower() for d in _safe_str_list(ignore_raw)}
+        return Config(target_dir=target, ignore_dirs=ignore)
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "target_dir": str(self.target_dir),
+            "ignore_dirs": sorted(self.ignore_dirs),
+        }
+
+
+@dataclass
+class Stats:
+    recent: list[str]
+
+    @staticmethod
+    def default() -> "Stats":
+        return Stats(recent=[])
+
+    @staticmethod
+    def from_json(data: dict[str, Any]) -> "Stats":
+        recent_raw = data.get("recent", [])
+        recent = [s for s in recent_raw if isinstance(s, str)] if isinstance(recent_raw, list) else []
+        return Stats(recent=recent)
+
+    def to_json(self) -> dict[str, Any]:
+        return {"recent": self.recent}
+
+
+class JsonStore:
+    def __init__(self) -> None:
+        self._ensure_storage()
+
+    @staticmethod
+    def _ensure_storage() -> None:
+        APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def read(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            logging.warning("Missing JSON file: %s", path)
+        except json.JSONDecodeError:
+            logging.exception("Invalid JSON in file: %s", path)
+        except OSError:
+            logging.exception("Failed reading JSON file: %s", path)
+        return fallback.copy()
+
+    @staticmethod
+    def write(path: Path, payload: dict[str, Any]) -> None:
+        try:
+            path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except OSError:
+            logging.exception("Failed writing JSON file: %s", path)
+
+
+class MetaAssistantApp:
+    def __init__(self) -> None:
         self._setup_logging()
-        self.config: Config = self._load_config()
-        self.target_dir = Path(self.config["target_dir"])
-        self.ignore_dirs = {d.lower() for d in self.config["ignore_dirs"]}
+        self._store = JsonStore()
+        self.config = self._load_config()
         self.stats = self._load_stats()
 
-    def _setup_storage(self):
-        APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        if not CONFIG_FILE.exists():
-            self._write_json(
-                CONFIG_FILE,
-                {
-                    "target_dir": str(DEFAULT_TARGET_DIR),
-                    "ignore_dirs": sorted(DEFAULT_IGNORE_DIRS),
-                },
-            )
-        if not STATS_FILE.exists():
-            self._write_json(STATS_FILE, {"recent": []})
-
-    def _setup_logging(self):
+    def _setup_logging(self) -> None:
         logging.basicConfig(
             filename=LOG_FILE,
             level=logging.INFO,
             format="%(asctime)s [%(levelname)s] %(message)s",
         )
 
-    def _read_json(self, file_path: Path, fallback: dict[str, Any]):
-        try:
-            return json.loads(file_path.read_text(encoding="utf-8"))
-        except FileNotFoundError:
-            logging.warning("Missing JSON file: %s", file_path)
-        except json.JSONDecodeError:
-            logging.exception("Invalid JSON in file: %s", file_path)
-        except OSError:
-            logging.exception("Failed reading JSON file: %s", file_path)
-        return fallback.copy()
+    def _load_config(self) -> Config:
+        if not CONFIG_FILE.exists():
+            JsonStore.write(CONFIG_FILE, Config.default().to_json())
+        data = JsonStore.read(CONFIG_FILE, Config.default().to_json())
+        return Config.from_json(data)
 
-    def _write_json(self, file_path: Path, payload: dict[str, Any]):
-        try:
-            file_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        except OSError:
-            logging.exception("Failed writing JSON file: %s", file_path)
+    def _save_config(self) -> None:
+        JsonStore.write(CONFIG_FILE, self.config.to_json())
 
-    def _load_config(self):
-        data = self._read_json(
-            CONFIG_FILE,
-            {
-                "target_dir": str(DEFAULT_TARGET_DIR),
-                "ignore_dirs": sorted(DEFAULT_IGNORE_DIRS),
-            },
-        )
+    def _load_stats(self) -> Stats:
+        if not STATS_FILE.exists():
+            JsonStore.write(STATS_FILE, Stats.default().to_json())
+        data = JsonStore.read(STATS_FILE, Stats.default().to_json())
+        return Stats.from_json(data)
 
-        target_dir = data.get("target_dir", str(DEFAULT_TARGET_DIR))
-        ignore_dirs = data.get("ignore_dirs", sorted(DEFAULT_IGNORE_DIRS))
+    def _save_stats(self) -> None:
+        JsonStore.write(STATS_FILE, self.stats.to_json())
 
-        if not isinstance(target_dir, str):
-            target_dir = str(DEFAULT_TARGET_DIR)
-        if not isinstance(ignore_dirs, list):
-            ignore_dirs = sorted(DEFAULT_IGNORE_DIRS)
-
-        cleaned_ignore = [str(x).strip() for x in ignore_dirs if str(x).strip()]
-        config: Config = {
-            "target_dir": target_dir,
-            "ignore_dirs": cleaned_ignore,
-        }
-        return config
-
-    def _save_config(self):
-        self.config = {
-            "target_dir": str(self.target_dir),
-            "ignore_dirs": sorted(self.ignore_dirs),
-        }
-        self._write_json(CONFIG_FILE, self.config)
-
-    def _load_stats(self):
-        data = self._read_json(STATS_FILE, {"recent": []})
-        recent = data.get("recent", [])
-        if not isinstance(recent, list):
-            recent = []
-        return {"recent": [str(x) for x in recent if isinstance(x, str)]}
-
-    def _save_stats(self):
-        self._write_json(STATS_FILE, self.stats)
-
-    def refresh_state(self, icon=None):
+    def refresh_state(self, icon: Any = None) -> None:
         self.config = self._load_config()
-        self.target_dir = Path(self.config["target_dir"])
-        self.ignore_dirs = {d.lower() for d in self.config["ignore_dirs"]}
         self.stats = self._load_stats()
         if icon is not None:
             try:
@@ -149,33 +172,31 @@ class AssistantApp:
             except Exception:
                 logging.exception("Failed to update tray menu during refresh.")
 
-    def record_hit(self, file_path: Path):
+    def record_hit(self, file_path: Path) -> None:
         try:
             p_str = str(file_path.absolute())
-            recent = self.stats.get("recent", [])
-            if p_str in recent:
-                recent.remove(p_str)
-            recent.insert(0, p_str)
-            self.stats["recent"] = recent[:MAX_RECENT]
+            if p_str in self.stats.recent:
+                self.stats.recent.remove(p_str)
+            self.stats.recent.insert(0, p_str)
+            self.stats.recent = self.stats.recent[:MAX_RECENT]
             self._save_stats()
         except OSError:
             logging.exception("Failed to record recent item: %s", file_path)
 
-    def launch(self, path_str: str):
+    def launch(self, path_str: str) -> None:
         p = Path(path_str)
         if not p.exists():
             logging.warning("Launch skipped; file not found: %s", path_str)
             return
-        if p.suffix.lower() not in (".py", ".pyw"):
+        if p.suffix.lower() not in PY_EXTS:
             logging.warning("Launch skipped; unsupported extension: %s", path_str)
             return
 
         self.record_hit(p)
-        ext = p.suffix.lower()
         cwd = str(p.parent)
 
         try:
-            if ext == ".pyw":
+            if p.suffix.lower() == ".pyw":
                 subprocess.Popen(["pythonw", path_str], cwd=cwd)
             else:
                 subprocess.Popen(
@@ -188,19 +209,18 @@ class AssistantApp:
         except OSError:
             logging.exception("Failed launching script: %s", path_str)
 
-    def _make_launch_callback(self, path_str: str):
-        """Factory to create pystray-compatible callbacks using closure."""
-        return lambda icon, item: self.launch(path_str)
+    def _make_launch_callback(self, path_str: str) -> Callable[[Icon, MenuItem], None]:
+        return lambda _icon, _item: self.launch(path_str)
 
-    def _make_remove_ignore_callback(self, dir_name: str):
-        """Factory to create pystray-compatible callbacks for removing ignored dirs."""
-        return lambda icon, item: self.remove_ignore_dir(icon, dir_name)
+    def _make_remove_ignore_callback(self, dir_name: str) -> Callable[[Icon, MenuItem], None]:
+        return lambda icon, _item: self.remove_ignore_dir(icon, dir_name)
 
-    def format_name(self, stem: str, is_dir=False) -> str:
+    @staticmethod
+    def format_name(stem: str, is_dir: bool = False) -> str:
         name = stem.replace("_", " ").upper()
         return f"{'📁 ' if is_dir else ''}{name}"
 
-    def build_menu_recursive(self, directory: Path):
+    def build_menu_recursive(self, directory: Path) -> list[MenuItem]:
         items: list[MenuItem] = []
         try:
             if not directory.exists() or not directory.is_dir():
@@ -213,7 +233,7 @@ class AssistantApp:
 
             for entry in entries:
                 if entry.is_dir():
-                    if entry.name.lower() in self.ignore_dirs:
+                    if entry.name.lower() in self.config.ignore_dirs:
                         continue
                     submenu_items = self.build_menu_recursive(entry)
                     if submenu_items:
@@ -223,22 +243,23 @@ class AssistantApp:
                                 Menu(*submenu_items),
                             )
                         )
-                elif entry.suffix.lower() in (".py", ".pyw"):
+                elif entry.suffix.lower() in PY_EXTS:
                     display = self.format_name(entry.stem)
                     icon_prefix = "⚡ " if entry.suffix.lower() == ".pyw" else "🐍 "
                     abs_path = str(entry.absolute())
                     items.append(
                         MenuItem(
                             f"{icon_prefix}{display}",
-                            self._make_launch_callback(abs_path),)
+                            self._make_launch_callback(abs_path),
+                        )
                     )
         except OSError:
             logging.exception("Failed building recursive menu for: %s", directory)
         return items
 
-    def build_recent_menu(self):
+    def build_recent_menu(self) -> list[MenuItem]:
         recent_items: list[MenuItem] = []
-        for p_str in self.stats.get("recent", []):
+        for p_str in self.stats.recent:
             p = Path(p_str)
             label = f"{p.stem} ({p.parent.name})" if p.parent.name else p.stem
             recent_items.append(
@@ -253,8 +274,8 @@ class AssistantApp:
             recent_items.append(MenuItem("No recent items", _noop, enabled=False))
         return recent_items
 
-    def _with_tk_dialog(self, callback):
-        root = None
+    def _with_tk_dialog(self, callback: Callable[[tk.Tk], Any]) -> Any:
+        root: Optional[tk.Tk] = None
         try:
             root = tk.Tk()
             root.withdraw()
@@ -267,38 +288,38 @@ class AssistantApp:
             if root is not None:
                 root.destroy()
 
-    def choose_target_dir(self, icon, item):
-        def _ask(_root):
+    def choose_target_dir(self, icon: Any, _item: MenuItem) -> None:
+        def _ask(_root: tk.Tk) -> str:
             return filedialog.askdirectory(
                 title="Select Assistant Target Directory",
-                initialdir=str(self.target_dir) if self.target_dir.exists() else str(Path.home()),
+                initialdir=str(self.config.target_dir) if self.config.target_dir.exists() else str(Path.home()),
             )
 
         selected = self._with_tk_dialog(_ask)
         if selected:
-            self.target_dir = Path(selected)
+            self.config.target_dir = Path(selected)
             self._save_config()
             self.refresh_state(icon)
 
-    def remove_ignore_dir(self, icon, dir_name: str):
-        if dir_name in self.ignore_dirs:
-            self.ignore_dirs.remove(dir_name)
+    def remove_ignore_dir(self, icon: Any, dir_name: str) -> None:
+        if dir_name in self.config.ignore_dirs:
+            self.config.ignore_dirs.remove(dir_name)
             self._save_config()
             self.refresh_state(icon)
 
-    def refresh_menu(self, icon, item):
+    def refresh_menu(self, icon: Any, _item: MenuItem) -> None:
         self.refresh_state(icon)
 
-    def open_root(self, icon, item):
+    def open_root(self, _icon: Any, _item: MenuItem) -> None:
         try:
-            if self.target_dir.exists():
-                startfile(self.target_dir)
+            if self.config.target_dir.exists():
+                startfile(self.config.target_dir)
             else:
-                logging.warning("Target directory does not exist: %s", self.target_dir)
+                logging.warning("Target directory does not exist: %s", self.config.target_dir)
         except OSError:
-            logging.exception("Failed to open target directory: %s", self.target_dir)
+            logging.exception("Failed to open target directory: %s", self.config.target_dir)
 
-    def open_config_file(self, icon, item):
+    def open_config_file(self, _icon: Any, _item: MenuItem) -> None:
         try:
             if not CONFIG_FILE.exists():
                 self._save_config()
@@ -306,27 +327,27 @@ class AssistantApp:
         except OSError:
             logging.exception("Failed to open config file: %s", CONFIG_FILE)
 
-    def build_settings_menu(self):
+    def build_settings_menu(self) -> list[MenuItem]:
         ignore_items = [
             MenuItem(f"➖ {name}", self._make_remove_ignore_callback(name))
-            for name in sorted(self.ignore_dirs)
+            for name in sorted(self.config.ignore_dirs)
         ]
         if not ignore_items:
             ignore_items.append(MenuItem("No ignored folders", _noop, enabled=False))
 
         return [
-            MenuItem(f"📍 Current Target: {self.target_dir}", _noop, enabled=False),
+            MenuItem(f"📍 Current Target: {self.config.target_dir}", _noop, enabled=False),
             MenuItem("📂 Choose Target Directory...", self.choose_target_dir),
             MenuItem("📄 Open Config File", self.open_config_file),
             MenuItem("🔄 Reload Config", self.refresh_menu),
             MenuItem("🛑 Ignored Folders", Menu(*ignore_items)),
         ]
 
-    def build_main_menu(self):
-        items = []
+    def build_main_menu(self) -> list[MenuItem]:
+        items: list[MenuItem] = []
 
-        if self.target_dir.exists() and self.target_dir.is_dir():
-            items.extend(self.build_menu_recursive(self.target_dir))
+        if self.config.target_dir.exists() and self.config.target_dir.is_dir():
+            items.extend(self.build_menu_recursive(self.config.target_dir))
         else:
             items.append(MenuItem("Target directory not found", _noop, enabled=False))
 
@@ -335,20 +356,20 @@ class AssistantApp:
         items.append(MenuItem("⚙️ Settings", Menu(*self.build_settings_menu())))
         items.append(MenuItem("🔄 Refresh", self.refresh_menu))
         items.append(MenuItem("📂 Open Root", self.open_root))
-        items.append(MenuItem("❌ Exit", lambda icon, item: icon.stop()))
+        items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))
         return items
 
-    def load_icon_image(self):
+    def load_icon_image(self) -> Image.Image:
         icon_source = ICON_FILE if ICON_FILE.exists() else EXE_ICON_FILE
+        img = Image.new("RGB", (64, 64), (15, 23, 42))
         if icon_source.exists():
             try:
                 return Image.open(icon_source)
             except OSError:
                 logging.exception("Failed loading icon file: %s", icon_source)
-                img = Image.new("RGB", (64, 64), (15, 23, 42))
         return img
 
-    def set_autostart(self):
+    def set_autostart(self) -> None:
         if Path(executable).name.lower() in ("python.exe", "pythonw.exe"):
             return
         try:
@@ -363,7 +384,7 @@ class AssistantApp:
         except OSError:
             logging.exception("Failed setting autostart registry key.")
 
-    def run(self):
+    def run(self) -> None:
         self.set_autostart()
         icon = Icon(
             APP_NAME,
@@ -371,8 +392,8 @@ class AssistantApp:
             title="Assistant Launcher",
             menu=Menu(lambda: self.build_main_menu()),
         )
-        icon.run()
+        icon.run() # pyright: ignore[reportUnknownMemberType]
 
 
 if __name__ == "__main__":
-    AssistantApp().run()
+    MetaAssistantApp().run()
