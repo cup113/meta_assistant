@@ -52,7 +52,7 @@
   - **Ignored Folders**: Remove entries from the ignore list via submenu.
   - **Refresh**: Reload files and menu immediately.
 - **Recent**: Access recently launched scripts (if they still exist).
-- **Set Autostart**: Configure a script to run automatically when the application starts (via "Set Autostart" submenu).
+- **Set Autostart**: Configure one or more scripts to run automatically when the application starts (via "Set Autostart" submenu). Click to toggle scripts on/off.
 - **Open Root**: Open the target directory in File Explorer.
 - **Exit**: Quit the application.
 
@@ -60,7 +60,7 @@
 
 Configurations are stored in `%APPDATA%\AssistantLauncher\`:
 
-- `config.json`: Sets `target_dir`, `ignore_dirs`, and `autostart_script`.
+- `config.json`: Sets `target_dir`, `ignore_dirs`, and `autostart_scripts`.
 - `assistant_stats.json`: Tracks recent file history.
 - `assistant.log`: Runtime logs.
 
@@ -70,7 +70,7 @@ Example `config.json`:
 {
   "target_dir": "F:/projects/assistant",
   "ignore_dirs": ["node_modules", "__pycache__", "venv", ".git", ".venv", "dist", "build"],
-  "autostart_script": "F:/projects/assistant/startup.py"
+  "autostart_scripts": ["F:/projects/assistant/startup.py"]
 }
 ```
 
@@ -79,7 +79,7 @@ Example `config.json`:
 - Paths in `ignore_dirs` are **lowered** folder names (not full paths).
 - The app updates the menu automatically when config changes or on manual refresh.
 - Auto-start registry key (`HKEY_CURRENT_USER\...\Run`) is set only when running as a compiled `.exe` (not from `python.exe`).
-- `autostart_script` must be an absolute path to a valid Python script; it will be launched when the application starts.
+- `autostart_scripts` is an array of absolute paths; each script will be launched when the application starts.
 
 ## Troubleshooting
 

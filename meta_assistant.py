@@ -54,44 +54,53 @@ def _noop(*_args: Any, **_kwargs: Any) -> None:
 def _safe_str_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
-    return [s for s in (str(x).strip() for x in value) if s]
+    return [s for s in (str(x).strip() for x in value) if s]  # type: ignore
 
 
 @dataclass
 class Config:
     target_dir: Path
     ignore_dirs: set[str]
-    autostart_script: Optional[str] = None
+    autostart_scripts: list[str]
 
     @staticmethod
     def default() -> "Config":
         return Config(
             target_dir=DEFAULT_TARGET_DIR,
             ignore_dirs=set(DEFAULT_IGNORE_DIRS),
-            autostart_script=None,
+            autostart_scripts=[],
         )
 
     @staticmethod
     def from_json(data: dict[str, Any]) -> "Config":
         target_raw = data.get("target_dir", str(DEFAULT_TARGET_DIR))
         ignore_raw = data.get("ignore_dirs", list(DEFAULT_IGNORE_DIRS))
-        autostart_script = data.get("autostart_script")
 
         target = Path(target_raw) if isinstance(target_raw, str) else DEFAULT_TARGET_DIR
         ignore = {d.lower() for d in _safe_str_list(ignore_raw)}
+
+        autostart_list: list[str] = []
+        autostart_raw = data.get("autostart_scripts")
+        if isinstance(autostart_raw, list):
+            autostart_list = _safe_str_list(autostart_raw)
+        elif isinstance(autostart_raw, str) and autostart_raw:
+            autostart_list = [autostart_raw]
+        else:
+            legacy = data.get("autostart_script")
+            if isinstance(legacy, str) and legacy:
+                autostart_list = [legacy]
+
         return Config(
             target_dir=target,
             ignore_dirs=ignore,
-            autostart_script=str(autostart_script)
-            if isinstance(autostart_script, str)
-            else None,
+            autostart_scripts=autostart_list,
         )
 
     def to_json(self) -> dict[str, Any]:
         return {
             "target_dir": str(self.target_dir),
             "ignore_dirs": sorted(self.ignore_dirs),
-            "autostart_script": self.autostart_script,
+            "autostart_scripts": self.autostart_scripts,
         }
 
 
@@ -107,7 +116,7 @@ class Stats:
     def from_json(data: dict[str, Any]) -> "Stats":
         recent_raw = data.get("recent", [])
         recent = (
-            [s for s in recent_raw if isinstance(s, str)]
+            [s for s in recent_raw if isinstance(s, str)]  # pyright: ignore[reportUnknownVariableType]
             if isinstance(recent_raw, list)
             else []
         )
@@ -242,15 +251,18 @@ class MetaAssistantApp:
     def _make_set_autostart_callback(
         self, path_str: str
     ) -> Callable[[Any, MenuItem], None]:
-        return lambda icon, _item: self._set_autostart_script(icon, path_str)
+        return lambda icon, _item: self._toggle_autostart_script(icon, path_str)
 
-    def _set_autostart_script(self, icon: Any, path_str: str) -> None:
-        self.config.autostart_script = path_str
+    def _toggle_autostart_script(self, icon: Any, path_str: str) -> None:
+        if path_str in self.config.autostart_scripts:
+            self.config.autostart_scripts.remove(path_str)
+        else:
+            self.config.autostart_scripts.append(path_str)
         self._save_config()
         self.refresh_state(icon)
 
-    def clear_autostart_script(self, icon: Any, _item: MenuItem) -> None:
-        self.config.autostart_script = None
+    def clear_autostart_scripts(self, icon: Any, _item: MenuItem) -> None:
+        self.config.autostart_scripts.clear()
         self._save_config()
         self.refresh_state(icon)
 
@@ -320,7 +332,9 @@ class MetaAssistantApp:
 
     def build_autostart_menu(self) -> list[MenuItem]:
         items: list[MenuItem] = []
-        items.append(MenuItem("❌ Cancel Autostart", self.clear_autostart_script))
+        items.append(
+            MenuItem("❌ Clear Autostart Scripts", self.clear_autostart_scripts)
+        )
         items.append(Menu.SEPARATOR)
 
         scripts = self.stats.recent
@@ -331,12 +345,13 @@ class MetaAssistantApp:
         for script in scripts:
             p = Path(script)
             label = f"{self.format_name(p.stem)} ({p.parent.name})"
+            is_enabled = script in self.config.autostart_scripts
             items.append(
                 MenuItem(
                     label,
                     self._make_set_autostart_callback(str(script)),
-                    checked=lambda item, s=str(script): (
-                        self.config.autostart_script == s
+                    checked=lambda item, s=str(script), _=is_enabled: (  # pyright: ignore[reportUnknownLambdaType]
+                        s in self.config.autostart_scripts
                     ),
                 )
             )
@@ -368,7 +383,7 @@ class MetaAssistantApp:
         try:
             root = tk.Tk()
             root.withdraw()
-            root.attributes("-topmost", True)
+            root.attributes("-topmost", True)  # type: ignore
             return callback(root)
         except Exception:
             logging.exception("Dialog operation failed.")
@@ -447,15 +462,18 @@ class MetaAssistantApp:
         if not ignore_items:
             ignore_items.append(MenuItem("No ignored folders", _noop, enabled=False))
 
+        autostart_label = (
+            f"⚡ Autostart ({len(self.config.autostart_scripts)}): "
+            + ", ".join(Path(s).stem for s in self.config.autostart_scripts)
+            if self.config.autostart_scripts
+            else "None"
+        )
+
         return [
             MenuItem(
                 f"📍 Current Target: {self.config.target_dir}", _noop, enabled=False
             ),
-            MenuItem(
-                f"⚡ Autostart Script: {Path(self.config.autostart_script).name if self.config.autostart_script else 'None'}",
-                _noop,
-                enabled=False,
-            ),
+            MenuItem(autostart_label, _noop, enabled=False),
             MenuItem("📂 Choose Target Directory...", self.choose_target_dir),
             MenuItem("📄 Open Config File", self.open_config_file),
             MenuItem("🔄 Reload Config", self.refresh_menu),
@@ -483,24 +501,26 @@ class MetaAssistantApp:
         items.append(MenuItem("⚙️ Settings", Menu(*self.build_settings_menu())))
         items.append(MenuItem("🔄 Refresh", self.refresh_menu))
         items.append(MenuItem("📂 Open Root", self.open_root))
-        items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))
+        items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))  # type: ignore
         return items
 
     def load_icon_image(self) -> Image.Image:
         icon_source = ICON_FILE if ICON_FILE.exists() else EXE_ICON_FILE
-        img = Image.new("RGB", (64, 64), (15, 23, 42))
+        img = Image.new("RGB", (64, 64), (15, 23, 42))  # type: ignore
         if icon_source.exists():
             try:
-                return Image.open(icon_source)
+                return Image.open(icon_source)  # type: ignore
             except OSError:
                 logging.exception("Failed loading icon file: %s", icon_source)
         return img
 
     def run(self) -> None:
-        # 启动时自动运行配置的自启动脚本
-        if self.config.autostart_script:
-            logging.info(f"Autostarting script: {self.config.autostart_script}")
-            self.launch(self.config.autostart_script)
+        for script in self.config.autostart_scripts:
+            if Path(script).exists():
+                logging.info(f"Autostarting script: {script}")
+                self.launch(script)
+            else:
+                logging.warning(f"Autostart script not found, skipping: {script}")
 
         icon = Icon(
             APP_NAME,
