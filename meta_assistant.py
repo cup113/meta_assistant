@@ -3,13 +3,13 @@ import logging
 import os
 import subprocess
 import tkinter as tk
+from collections.abc import Callable
 from dataclasses import dataclass
 from os import startfile
 from pathlib import Path
 from sys import argv, executable
 from tkinter import filedialog
-from typing import Any, Callable, Optional
-
+from typing import Any
 from winreg import (
     HKEY_CURRENT_USER,
     KEY_SET_VALUE,
@@ -25,7 +25,7 @@ from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStu
 # --- Configuration ---
 APP_NAME = "AssistantLauncher"
 APP_EXE_PATH = Path(argv[0]).absolute()
-DEFAULT_TARGET_DIR = Path(r"F:/projects/assistant")
+DEFAULT_TARGET_DIR = Path.cwd()
 DEFAULT_IGNORE_DIRS = {
     "node_modules",
     "__pycache__",
@@ -161,8 +161,8 @@ class MetaAssistantApp:
         self.config = self._load_config()
         self.stats = self._load_stats()
         # 目录缓存
-        self._cached_dir_menu: Optional[list[MenuItem]] = None
-        self._cached_script_paths: Optional[list[Path]] = None
+        self._cached_dir_menu: list[MenuItem] | None = None
+        self._cached_script_paths: list[Path] | None = None
 
     def _setup_logging(self) -> None:
         logging.basicConfig(
@@ -350,7 +350,7 @@ class MetaAssistantApp:
                 MenuItem(
                     label,
                     self._make_set_autostart_callback(str(script)),
-                    checked=lambda item, s=str(script), _=is_enabled: (  # pyright: ignore[reportUnknownLambdaType]
+                    checked=lambda _item, s=str(script), _=is_enabled: (  # pyright: ignore[reportUnknownLambdaType]
                         s in self.config.autostart_scripts
                     ),
                 )
@@ -379,7 +379,7 @@ class MetaAssistantApp:
         return recent_items
 
     def _with_tk_dialog(self, callback: Callable[[tk.Tk], Any]) -> Any:
-        root: Optional[tk.Tk] = None
+        root: tk.Tk | None = None
         try:
             root = tk.Tk()
             root.withdraw()

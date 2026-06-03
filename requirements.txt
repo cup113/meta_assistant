@@ -1,0 +1,9 @@
+# runtime
+pystray
+pillow
+
+# dev / ci
+ruff
+pyright
+nuitka
+zstandard

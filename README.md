@@ -1,5 +1,9 @@
 # Assistant Launcher
 
+[![CI](https://img.shields.io/github/actions/workflow/status/cup113/meta_assistant/ci.yml?branch=main&logo=github)](https://github.com/cup113/meta_assistant/actions)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python)](https://www.python.org)
+[![Platform](https://img.shields.io/badge/platform-windows-lightgrey?logo=windows)](.)
+
 **Assistant Launcher** is a Windows system tray application that provides instant access to Python scripts (`.py`/`.pyw`) within a designated project directory. It dynamically builds a hierarchical menu from your file structure, excludes common development folders (like `node_modules`, `venv`, `.git`), tracks recently launched scripts, and offers configuration management—all from a lightweight tray icon.
 
 ## Features
@@ -24,22 +28,22 @@
 1. Clone or download this repository.
 2. Install dependencies:
 ```bash
-   pip install pystray pillow
+   pip install -r requirements.txt
 ```
 3. Run the app:
 ```bash
-   python assistant.py
+   python meta_assistant.py
 ```
 ### As Standalone Executable
-1. Install PyInstaller:
+1. Install build dependencies:
 ```bash
-   pip install pyinstaller
+   pip install -r requirements.txt
 ```
-2. Build the executable (adjust icon path as needed):
+2. Build with Nuitka:
 ```bash
-   pyinstaller --onefile --windowed --icon=assistant.ico assistant.py
+   python -m nuitka --standalone --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter meta_assistant.py
 ```
-3. Use the generated `.exe` in the `dist/` folder.
+3. Use the generated executable in the `dist/meta_assistant.dist/` folder.
 
 ## Usage
 
