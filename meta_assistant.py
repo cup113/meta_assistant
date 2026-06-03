@@ -22,7 +22,7 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 # --- Configuration ---
 APP_NAME = "AssistantLauncher"

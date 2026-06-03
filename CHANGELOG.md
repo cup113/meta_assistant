@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.3] - 2026-06-04
+
+### Fixed
+- Fix zip archive path to point to `dist/meta_assistant.dist/` instead of `dist/`
+
 ## [1.0.2] - 2026-06-04
 
 ### Fixed
