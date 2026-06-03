@@ -1,0 +1,27 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: ruff check
+      - run: pyright
+      - run: python -m nuitka --standalone --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter --assume-yes-for-downloads meta_assistant.py
+      - run: |
+          cd dist
+          zip -r ../meta-assistant-${{ github.ref_name }}.zip .
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: meta-assistant-*.zip
+          generate_release_notes: true

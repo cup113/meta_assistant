@@ -1,11 +1,12 @@
 name: CI
-
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   ci:
@@ -16,44 +17,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-
       - run: pip install -r requirements.txt
-
-      - name: Lint
-        run: ruff check
-
-      - name: Type check
-        run: pyright
-
-      - name: Build
-        run: python -m nuitka --standalone --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter --assume-yes-for-downloads meta_assistant.py
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: meta-assistant-${{ matrix.python-version }}
-          path: dist/
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: ci
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: meta-assistant-3.12
-          path: dist/
-
-      - name: Create zip archive
-        run: |
-          cd dist
-          zip -r ../meta-assistant-${{ github.ref_name }}.zip .
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: meta-assistant-*.zip
-          generate_release_notes: true
+      - run: ruff check
+      - run: pyright
