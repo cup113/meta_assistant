@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.2] - 2026-06-04
+
+### Fixed
+- Use `Compress-Archive` instead of `zip` on Windows runner
+
 ## [1.0.1] - 2026-06-04
 
 ### Changed
