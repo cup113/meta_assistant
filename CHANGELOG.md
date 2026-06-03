@@ -1,23 +1,21 @@
 # Changelog
 
-## [0.1.1] - 2026-06-04
+## [1.0.1] - 2026-06-04
 
-### Added
-- Automated release workflow on git tag (build → zip → GitHub Release)
-- CI workflow for linting, type checking, and Nuitka build
+### Changed
+- Split CI and release workflows to avoid duplicate runs
+- Release workflow now uses `permissions: contents: write` to fix 403 error
 
 ### Fixed
 - Nuitka build failure in CI: added `--assume-yes-for-downloads` for Dependency Walker
 
 ## [1.0.0] - 2026-06-04
 
+### Added
+- CI workflow for linting, type checking, and Nuitka build
+- Multiple autostart script support with backward compatibility
+- First-run guide dialog
+- Build script for Windows development
+
 ### Changed
 - Refactored to dataclasses and improved type safety
-
-## [0.1.0] - 2026-06-04
-
-### Added
-- First-run guide dialog
-- Multiple autostart script support with backward compatibility
-- Build script for Windows development
-- Initial project structure
