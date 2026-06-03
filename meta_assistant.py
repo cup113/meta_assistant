@@ -22,6 +22,8 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
+__version__ = "0.1.0"
+
 # --- Configuration ---
 APP_NAME = "AssistantLauncher"
 APP_EXE_PATH = Path(argv[0]).absolute()
@@ -34,6 +36,7 @@ DEFAULT_IGNORE_DIRS = {
     ".venv",
     "dist",
     "build",
+    "site-packages",
 }
 MAX_RECENT = 10
 
@@ -77,7 +80,7 @@ class Config:
         ignore_raw = data.get("ignore_dirs", list(DEFAULT_IGNORE_DIRS))
 
         target = Path(target_raw) if isinstance(target_raw, str) else DEFAULT_TARGET_DIR
-        ignore = {d.lower() for d in _safe_str_list(ignore_raw)}
+        ignore = set(_safe_str_list(ignore_raw))
 
         autostart_list: list[str] = []
         autostart_raw = data.get("autostart_scripts")
@@ -158,6 +161,7 @@ class MetaAssistantApp:
     def __init__(self) -> None:
         self._setup_logging()
         self._store = JsonStore()
+        self._is_first_run = not CONFIG_FILE.exists()
         self.config = self._load_config()
         self.stats = self._load_stats()
         # 目录缓存
@@ -170,6 +174,7 @@ class MetaAssistantApp:
             level=logging.INFO,
             format="%(asctime)s [%(levelname)s] %(message)s",
         )
+        logging.info("Assistant Launcher v%s", __version__)
 
     def _load_config(self) -> Config:
         if not CONFIG_FILE.exists():
@@ -195,6 +200,7 @@ class MetaAssistantApp:
         # 清空缓存强制重建
         self._cached_dir_menu = None
         self._cached_script_paths = None
+        self._is_first_run = False
         if icon is not None:
             try:
                 icon.update_menu()
@@ -268,12 +274,13 @@ class MetaAssistantApp:
 
     @staticmethod
     def format_name(stem: str, is_dir: bool = False) -> str:
-        name = stem.replace("_", " ").replace("-", " ").capitalize()
+        name = stem.replace("_", " ").replace("-", " ").title()
         icon = "📁" if is_dir else ("⚡" if stem.lower().endswith(".pyw") else "🐍")
         return f"{icon} {name}"
 
     def build_menu_recursive(self, directory: Path) -> list[MenuItem]:
         items: list[MenuItem] = []
+        _ignore_lower = {d.lower() for d in self.config.ignore_dirs}
         try:
             if not directory.exists() or not directory.is_dir():
                 return items
@@ -285,7 +292,7 @@ class MetaAssistantApp:
 
             for entry in entries:
                 if entry.is_dir():
-                    if entry.name.lower() in self.config.ignore_dirs:
+                    if entry.name.lower() in _ignore_lower:
                         continue
                     submenu_items = self.build_menu_recursive(entry)
                     if submenu_items:
@@ -314,10 +321,11 @@ class MetaAssistantApp:
         paths: list[Path] = []
 
         def scan(dir: Path) -> None:
+            _ignore_lower = {d.lower() for d in self.config.ignore_dirs}
             try:
                 for entry in dir.iterdir():
                     if entry.is_dir():
-                        if entry.name.lower() in self.config.ignore_dirs:
+                        if entry.name.lower() in _ignore_lower:
                             continue
                         scan(entry)
                     elif entry.suffix.lower() in PY_EXTS:
@@ -404,12 +412,17 @@ class MetaAssistantApp:
         selected = self._with_tk_dialog(_ask)
         if selected:
             self.config.target_dir = Path(selected)
+            self._is_first_run = False
             self._save_config()
             self.refresh_state(icon)
 
     def remove_ignore_dir(self, icon: Any, dir_name: str) -> None:
-        if dir_name in self.config.ignore_dirs:
-            self.config.ignore_dirs.remove(dir_name)
+        to_remove = next(
+            (d for d in self.config.ignore_dirs if d.lower() == dir_name.lower()),
+            None,
+        )
+        if to_remove is not None:
+            self.config.ignore_dirs.remove(to_remove)
             self._save_config()
             self.refresh_state(icon)
 
@@ -473,6 +486,7 @@ class MetaAssistantApp:
             MenuItem(
                 f"📍 Current Target: {self.config.target_dir}", _noop, enabled=False
             ),
+            MenuItem(f"📌 v{__version__}", _noop, enabled=False),
             MenuItem(autostart_label, _noop, enabled=False),
             MenuItem("📂 Choose Target Directory...", self.choose_target_dir),
             MenuItem("📄 Open Config File", self.open_config_file),
@@ -483,6 +497,19 @@ class MetaAssistantApp:
 
     def build_main_menu(self) -> list[MenuItem]:
         items: list[MenuItem] = []
+
+        if self._is_first_run:
+            items.append(
+                MenuItem("👋 Welcome to Assistant Launcher", _noop, enabled=False)
+            )
+            items.append(Menu.SEPARATOR)
+            items.append(
+                MenuItem("📂 Choose Target Directory...", self.choose_target_dir)
+            )
+            items.append(MenuItem("⚙️ Settings", Menu(*self.build_settings_menu())))
+            items.append(Menu.SEPARATOR)
+            items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))  # type: ignore
+            return items
 
         if self.config.target_dir.exists() and self.config.target_dir.is_dir():
             # 使用缓存目录结构，避免每次读文件系统
