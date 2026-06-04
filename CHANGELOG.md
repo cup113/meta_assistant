@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5] - 2026-06-04
+
+### Changed
+- Use persistent `tkinter` root window with dialog queue pattern to fix thread-safety of file dialogs
+- Replace `icon.stop()` direct calls with `_exit_app()` to properly clean up tkinter mainloop
+- Replace `icon.run()` with `icon.run_detached()` + `root.mainloop()` to support persistent tkinter root
+
 ## [1.0.4] - 2026-06-04
 
 ### Changed

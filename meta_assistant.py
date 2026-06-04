@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import queue
 import subprocess
 import tkinter as tk
 from collections.abc import Callable
@@ -22,7 +23,7 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 # --- Configuration ---
 APP_NAME = "MetaAssistant"
@@ -165,6 +166,10 @@ class MetaAssistantApp:
         self._is_first_run = not CONFIG_FILE.exists()
         self.config = self._load_config()
         self.stats = self._load_stats()
+        self._dialog_queue: queue.Queue[
+            tuple[str, Callable[..., Any], queue.Queue[Any]]
+        ] = queue.Queue()
+        self._root: tk.Tk | None = None
         # 目录缓存
         self._cached_dir_menu: list[MenuItem] | None = None
         self._cached_script_paths: list[Path] | None = None
@@ -375,19 +380,20 @@ class MetaAssistantApp:
             recent_items.append(MenuItem("No recent items", _noop, enabled=False))
         return recent_items
 
-    def _with_tk_dialog(self, callback: Callable[[tk.Tk], Any]) -> Any:
-        root: tk.Tk | None = None
+    def _process_dialog_queue(self, root: tk.Tk) -> None:
         try:
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes("-topmost", True)  # type: ignore
-            return callback(root)
-        except Exception:
-            logging.exception("Dialog operation failed.")
-            return None
-        finally:
-            if root is not None:
-                root.destroy()
+            while True:
+                _task, callback, result_queue = self._dialog_queue.get_nowait()
+                result = callback(root)
+                result_queue.put(result)
+        except queue.Empty:
+            pass
+        root.after(100, lambda: self._process_dialog_queue(root))
+
+    def _with_tk_dialog(self, callback: Callable[[tk.Tk], Any]) -> Any:
+        result_queue: queue.Queue[Any] = queue.Queue()
+        self._dialog_queue.put(("callback", callback, result_queue))
+        return result_queue.get()
 
     def choose_target_dir(self, icon: Any, _item: MenuItem) -> None:
         def _ask(_root: tk.Tk) -> str:
@@ -487,7 +493,7 @@ class MetaAssistantApp:
             items.append(MenuItem("📂 Choose Target Directory...", self.choose_target_dir))
             items.append(MenuItem("⚙️ Settings", Menu(*self.build_settings_menu())))
             items.append(Menu.SEPARATOR)
-            items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))  # type: ignore
+            items.append(MenuItem("❌ Exit", lambda _icon, _item: self._exit_app()))  # type: ignore
             return items
 
         if self.config.target_dir.exists() and self.config.target_dir.is_dir():
@@ -505,8 +511,12 @@ class MetaAssistantApp:
         items.append(MenuItem("⚙️ Settings", Menu(*self.build_settings_menu())))
         items.append(MenuItem("🔄 Refresh", self.refresh_menu))
         items.append(MenuItem("📂 Open Root", self.open_root))
-        items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))  # type: ignore
+        items.append(MenuItem("❌ Exit", lambda _icon, _item: self._exit_app()))  # type: ignore
         return items
+
+    def _exit_app(self) -> None:
+        if self._root is not None:
+            self._root.quit()
 
     def load_icon_image(self) -> Image.Image:
         icon_source = ICON_FILE if ICON_FILE.exists() else EXE_ICON_FILE
@@ -526,13 +536,22 @@ class MetaAssistantApp:
             else:
                 logging.warning(f"Autostart script not found, skipping: {script}")
 
+        self._root = tk.Tk()
+        self._root.withdraw()
+        self._root.attributes("-topmost", True)
+
+        self._process_dialog_queue(self._root)
+
         icon = Icon(
             APP_NAME,
             self.load_icon_image(),
             title="Assistant Launcher",
             menu=Menu(lambda: self.build_main_menu()),
         )
-        icon.run()  # pyright: ignore[reportUnknownMemberType]
+        icon.run_detached()
+
+        self._root.mainloop()
+        icon.stop()
 
 
 if __name__ == "__main__":
