@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] - 2026-06-04
+
+### Fixed
+- Use `shutil.which()` to resolve `pythonw`/`python` executable paths instead of bare names, preventing launch failures when only venv-wrapped paths are on PATH
+
 ## [1.1.0] - 2026-06-04
 
 ### Fixed

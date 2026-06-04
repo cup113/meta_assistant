@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import queue
+import shutil
 import subprocess
 import tkinter as tk
 from collections.abc import Callable
@@ -23,7 +24,7 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 # --- Configuration ---
 APP_NAME = "MetaAssistant"
@@ -235,15 +236,21 @@ class MetaAssistantApp:
 
         self.record_hit(p)
         cwd = str(p.parent)
-        exe = "pythonw" if p.suffix.lower() == ".pyw" else "python"
-        logging.info("Launching: %s %s (cwd=%s)", exe, path_str, cwd)
+        is_pyw = p.suffix.lower() == ".pyw"
+        exe_name = "pythonw" if is_pyw else "python"
+        exe_path = shutil.which(exe_name)
+        if exe_path is None:
+            logging.warning("%s not found on PATH, skipping: %s", exe_name, path_str)
+            return
+
+        logging.info("Launching: %s %s (cwd=%s)", exe_path, path_str, cwd)
 
         try:
-            if p.suffix.lower() == ".pyw":
-                subprocess.Popen(["pythonw", path_str], cwd=cwd)
+            if is_pyw:
+                subprocess.Popen([exe_path, path_str], cwd=cwd)
             else:
                 subprocess.Popen(
-                    ["cmd", "/k", "python", path_str],
+                    ["cmd", "/k", exe_path, path_str],
                     cwd=cwd,
                     creationflags=subprocess.CREATE_NEW_CONSOLE,
                 )
