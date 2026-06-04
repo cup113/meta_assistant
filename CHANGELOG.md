@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.2] - 2026-06-04
+
+### Fixed
+- Strip `TCL_LIBRARY` and `TK_LIBRARY` from subprocess environment before launching `.pyw` scripts, fixing `version conflict for package "Tcl"` crash when Nuitka-built exe spawns system Python with bundled Tcl libraries
+
 ## [1.1.1] - 2026-06-04
 
 ### Fixed

@@ -24,7 +24,7 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 
 # --- Configuration ---
 APP_NAME = "MetaAssistant"
@@ -245,13 +245,18 @@ class MetaAssistantApp:
 
         logging.info("Launching: %s %s (cwd=%s)", exe_path, path_str, cwd)
 
+        env = os.environ.copy()
+        env.pop("TCL_LIBRARY", None)
+        env.pop("TK_LIBRARY", None)
+
         try:
             if is_pyw:
-                subprocess.Popen([exe_path, path_str], cwd=cwd)
+                subprocess.Popen([exe_path, path_str], cwd=cwd, env=env)
             else:
                 subprocess.Popen(
                     ["cmd", "/k", exe_path, path_str],
                     cwd=cwd,
+                    env=env,
                     creationflags=subprocess.CREATE_NEW_CONSOLE,
                 )
         except FileNotFoundError:
