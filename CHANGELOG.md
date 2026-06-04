@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.4] - 2026-06-04
+
+### Changed
+- Rename data folder from `AssistantLauncher` to `MetaAssistant`
+- Ensure data directory is created before logging setup to prevent crash on first run
+
 ## [1.0.3] - 2026-06-04
 
 ### Fixed
