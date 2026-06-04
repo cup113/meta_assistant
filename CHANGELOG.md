@@ -7,6 +7,9 @@
 - Replace `icon.stop()` direct calls with `_exit_app()` to properly clean up tkinter mainloop
 - Replace `icon.run()` with `icon.run_detached()` + `root.mainloop()` to support persistent tkinter root
 
+### Fixed
+- Fix pyright `reportPrivateUsage`, `reportUnknownMemberType` errors
+
 ## [1.0.4] - 2026-06-04
 
 ### Changed

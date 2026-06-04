@@ -132,10 +132,10 @@ class Stats:
 
 class JsonStore:
     def __init__(self) -> None:
-        self._ensure_storage()
+        self.ensure_storage()
 
     @staticmethod
-    def _ensure_storage() -> None:
+    def ensure_storage() -> None:
         APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
@@ -160,15 +160,15 @@ class JsonStore:
 
 class MetaAssistantApp:
     def __init__(self) -> None:
-        JsonStore._ensure_storage()
+        JsonStore.ensure_storage()
         self._setup_logging()
         self._store = JsonStore()
         self._is_first_run = not CONFIG_FILE.exists()
         self.config = self._load_config()
         self.stats = self._load_stats()
-        self._dialog_queue: queue.Queue[
-            tuple[str, Callable[..., Any], queue.Queue[Any]]
-        ] = queue.Queue()
+        self._dialog_queue: queue.Queue[tuple[str, Callable[..., Any], queue.Queue[Any]]] = (
+            queue.Queue()
+        )
         self._root: tk.Tk | None = None
         # 目录缓存
         self._cached_dir_menu: list[MenuItem] | None = None
@@ -538,7 +538,7 @@ class MetaAssistantApp:
 
         self._root = tk.Tk()
         self._root.withdraw()
-        self._root.attributes("-topmost", True)
+        self._root.attributes("-topmost", True)  # type: ignore[reportUnknownMemberType]
 
         self._process_dialog_queue(self._root)
 
@@ -548,7 +548,7 @@ class MetaAssistantApp:
             title="Assistant Launcher",
             menu=Menu(lambda: self.build_main_menu()),
         )
-        icon.run_detached()
+        icon.run_detached()  # type: ignore[reportUnknownMemberType]
 
         self._root.mainloop()
         icon.stop()
