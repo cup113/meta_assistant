@@ -62,7 +62,7 @@
 
 ## Configuration
 
-Configurations are stored in `%APPDATA%\AssistantLauncher\`:
+Configurations are stored in `%APPDATA%\MetaAssistant\`:
 
 - `config.json`: Sets `target_dir`, `ignore_dirs`, and `autostart_scripts`.
 - `assistant_stats.json`: Tracks recent file history.
@@ -89,7 +89,7 @@ Example `config.json`:
 
 - **Menu not updating**: Use "⚙️ Settings → 🔄 Reload Config" or restart the app.
 - **Scripts not appearing**: Check `target_dir` in config and ensure files have `.py`/`.pyw` extensions.
-- **Permission issues**: Ensure `%APPDATA%\AssistantLauncher\` is writable.
+- **Permission issues**: Ensure `%APPDATA%\MetaAssistant\` is writable.
 - **Logs**: Check `assistant.log` in the config directory for errors.
 
 ## Contributing

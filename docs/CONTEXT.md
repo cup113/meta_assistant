@@ -6,7 +6,7 @@
 Single source-of-truth string in `meta_assistant.py`. Bumped manually per release. Displayed in Settings menu and startup log. Follows semver (`0.y.z` for initial development).
 
 ### First-run
-Detected when `CONFIG_FILE` does not exist in `%APPDATA%/AssistantLauncher/`. On first run, the tray menu shows a welcome guide with a "Choose Target Directory..." prompt instead of scanning a default directory. The guide is dismissed once the user selects a directory or triggers a refresh.
+Detected when `CONFIG_FILE` does not exist in `%APPDATA%/MetaAssistant/`. On first run, the tray menu shows a welcome guide with a "Choose Target Directory..." prompt instead of scanning a default directory. The guide is dismissed once the user selects a directory or triggers a refresh.
 
 ### Ignore dirs
 Directory names excluded from script scanning. Stored with original casing in config.json; matching against filesystem entries is case-insensitive (Windows convention). The menu displays the original-cased names.

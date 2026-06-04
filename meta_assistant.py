@@ -25,7 +25,7 @@ from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStu
 __version__ = "1.0.3"
 
 # --- Configuration ---
-APP_NAME = "AssistantLauncher"
+APP_NAME = "MetaAssistant"
 APP_EXE_PATH = Path(argv[0]).absolute()
 DEFAULT_TARGET_DIR = Path.cwd()
 DEFAULT_IGNORE_DIRS = {
@@ -159,6 +159,7 @@ class JsonStore:
 
 class MetaAssistantApp:
     def __init__(self) -> None:
+        JsonStore._ensure_storage()
         self._setup_logging()
         self._store = JsonStore()
         self._is_first_run = not CONFIG_FILE.exists()
@@ -240,23 +241,17 @@ class MetaAssistantApp:
                     creationflags=subprocess.CREATE_NEW_CONSOLE,
                 )
         except FileNotFoundError:
-            logging.exception(
-                "Python executable not found while launching: %s", path_str
-            )
+            logging.exception("Python executable not found while launching: %s", path_str)
         except OSError:
             logging.exception("Failed launching script: %s", path_str)
 
     def _make_launch_callback(self, path_str: str) -> Callable[[Any, MenuItem], None]:
         return lambda _icon, _item: self.launch(path_str)
 
-    def _make_remove_ignore_callback(
-        self, dir_name: str
-    ) -> Callable[[Any, MenuItem], None]:
+    def _make_remove_ignore_callback(self, dir_name: str) -> Callable[[Any, MenuItem], None]:
         return lambda icon, _item: self.remove_ignore_dir(icon, dir_name)
 
-    def _make_set_autostart_callback(
-        self, path_str: str
-    ) -> Callable[[Any, MenuItem], None]:
+    def _make_set_autostart_callback(self, path_str: str) -> Callable[[Any, MenuItem], None]:
         return lambda icon, _item: self._toggle_autostart_script(icon, path_str)
 
     def _toggle_autostart_script(self, icon: Any, path_str: str) -> None:
@@ -340,9 +335,7 @@ class MetaAssistantApp:
 
     def build_autostart_menu(self) -> list[MenuItem]:
         items: list[MenuItem] = []
-        items.append(
-            MenuItem("❌ Clear Autostart Scripts", self.clear_autostart_scripts)
-        )
+        items.append(MenuItem("❌ Clear Autostart Scripts", self.clear_autostart_scripts))
         items.append(Menu.SEPARATOR)
 
         scripts = self.stats.recent
@@ -369,11 +362,7 @@ class MetaAssistantApp:
         recent_items: list[MenuItem] = []
         for p_str in self.stats.recent:
             p = Path(p_str)
-            label = (
-                f"{self.format_name(p.stem)} ({p.parent.name})"
-                if p.parent.name
-                else p.stem
-            )
+            label = f"{self.format_name(p.stem)} ({p.parent.name})" if p.parent.name else p.stem
             recent_items.append(
                 MenuItem(
                     label,
@@ -434,13 +423,9 @@ class MetaAssistantApp:
             if self.config.target_dir.exists():
                 startfile(self.config.target_dir)
             else:
-                logging.warning(
-                    "Target directory does not exist: %s", self.config.target_dir
-                )
+                logging.warning("Target directory does not exist: %s", self.config.target_dir)
         except OSError:
-            logging.exception(
-                "Failed to open target directory: %s", self.config.target_dir
-            )
+            logging.exception("Failed to open target directory: %s", self.config.target_dir)
 
     def open_config_file(self, _icon: Any, _item: MenuItem) -> None:
         try:
@@ -483,9 +468,7 @@ class MetaAssistantApp:
         )
 
         return [
-            MenuItem(
-                f"📍 Current Target: {self.config.target_dir}", _noop, enabled=False
-            ),
+            MenuItem(f"📍 Current Target: {self.config.target_dir}", _noop, enabled=False),
             MenuItem(f"📌 v{__version__}", _noop, enabled=False),
             MenuItem(autostart_label, _noop, enabled=False),
             MenuItem("📂 Choose Target Directory...", self.choose_target_dir),
@@ -499,13 +482,9 @@ class MetaAssistantApp:
         items: list[MenuItem] = []
 
         if self._is_first_run:
-            items.append(
-                MenuItem("👋 Welcome to Assistant Launcher", _noop, enabled=False)
-            )
+            items.append(MenuItem("👋 Welcome to Assistant Launcher", _noop, enabled=False))
             items.append(Menu.SEPARATOR)
-            items.append(
-                MenuItem("📂 Choose Target Directory...", self.choose_target_dir)
-            )
+            items.append(MenuItem("📂 Choose Target Directory...", self.choose_target_dir))
             items.append(MenuItem("⚙️ Settings", Menu(*self.build_settings_menu())))
             items.append(Menu.SEPARATOR)
             items.append(MenuItem("❌ Exit", lambda icon, _item: icon.stop()))  # type: ignore
@@ -514,9 +493,7 @@ class MetaAssistantApp:
         if self.config.target_dir.exists() and self.config.target_dir.is_dir():
             # 使用缓存目录结构，避免每次读文件系统
             if self._cached_dir_menu is None:
-                self._cached_dir_menu = self.build_menu_recursive(
-                    self.config.target_dir
-                )
+                self._cached_dir_menu = self.build_menu_recursive(self.config.target_dir)
             items.extend(self._cached_dir_menu)
         else:
             items.append(MenuItem("Target directory not found", _noop, enabled=False))
