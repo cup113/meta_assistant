@@ -23,7 +23,7 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
-__version__ = "1.0.5"
+__version__ = "1.1.0"
 
 # --- Configuration ---
 APP_NAME = "MetaAssistant"
@@ -235,6 +235,8 @@ class MetaAssistantApp:
 
         self.record_hit(p)
         cwd = str(p.parent)
+        exe = "pythonw" if p.suffix.lower() == ".pyw" else "python"
+        logging.info("Launching: %s %s (cwd=%s)", exe, path_str, cwd)
 
         try:
             if p.suffix.lower() == ".pyw":
@@ -273,9 +275,9 @@ class MetaAssistantApp:
         self.refresh_state(icon)
 
     @staticmethod
-    def format_name(stem: str, is_dir: bool = False) -> str:
+    def format_name(stem: str, is_dir: bool = False, is_pyw: bool = False) -> str:
         name = stem.replace("_", " ").replace("-", " ").title()
-        icon = "📁" if is_dir else ("⚡" if stem.lower().endswith(".pyw") else "🐍")
+        icon = "📁" if is_dir else ("⚡" if is_pyw else "🐍")
         return f"{icon} {name}"
 
     def build_menu_recursive(self, directory: Path) -> list[MenuItem]:
@@ -303,7 +305,7 @@ class MetaAssistantApp:
                             )
                         )
                 elif entry.suffix.lower() in PY_EXTS:
-                    display = self.format_name(entry.stem)
+                    display = self.format_name(entry.stem, is_pyw=entry.suffix.lower() == ".pyw")
                     abs_path = str(entry.absolute())
                     items.append(
                         MenuItem(
@@ -350,7 +352,8 @@ class MetaAssistantApp:
 
         for script in scripts:
             p = Path(script)
-            label = f"{self.format_name(p.stem)} ({p.parent.name})"
+            is_pyw = p.suffix.lower() == ".pyw"
+            label = f"{self.format_name(p.stem, is_pyw=is_pyw)} ({p.parent.name})"
             is_enabled = script in self.config.autostart_scripts
             items.append(
                 MenuItem(
@@ -367,7 +370,12 @@ class MetaAssistantApp:
         recent_items: list[MenuItem] = []
         for p_str in self.stats.recent:
             p = Path(p_str)
-            label = f"{self.format_name(p.stem)} ({p.parent.name})" if p.parent.name else p.stem
+            is_pyw = p.suffix.lower() == ".pyw"
+            label = (
+                f"{self.format_name(p.stem, is_pyw=is_pyw)} ({p.parent.name})"
+                if p.parent.name
+                else p.stem
+            )
             recent_items.append(
                 MenuItem(
                     label,

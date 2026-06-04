@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0] - 2026-06-04
+
+### Fixed
+- Fix `.pyw` script detection for subdirectory scripts by passing `is_pyw` parameter explicitly to `format_name()`
+
+### Added
+- Log launch command (pythonw vs python) when launching scripts
+
 ## [1.0.5] - 2026-06-04
 
 ### Changed
