@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from os import startfile
 from pathlib import Path
-from sys import argv, executable
+from sys import argv
 from tkinter import filedialog
 from typing import Any
 from winreg import (
@@ -24,7 +24,7 @@ from winreg import (
 from PIL import Image  # pyright: ignore[reportMissingTypeStubs]
 from pystray import Icon, Menu, MenuItem  # pyright: ignore[reportMissingTypeStubs]
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 # --- Configuration ---
 APP_NAME = "MetaAssistant"
@@ -462,7 +462,7 @@ class MetaAssistantApp:
             logging.exception("Failed to open config file: %s", CONFIG_FILE)
 
     def set_autostart(self, _icon: Any = None, _item: Any = None) -> None:
-        if Path(executable).name.lower() in ("python.exe", "pythonw.exe"):
+        if not globals().get("__compiled__", False):
             logging.warning("Skipped setting autostart: running in dev mode")
             return
         try:

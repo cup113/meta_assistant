@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.3] - 2026-06-05
+
+### Changed
+- Replace `sys.executable` name check with `globals().get("__compiled__")` for exe detection when setting autostart, which is reliable even when the Nuitka-built exe is renamed
+
 ## [1.1.2] - 2026-06-04
 
 ### Fixed
