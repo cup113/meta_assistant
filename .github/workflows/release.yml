@@ -17,7 +17,8 @@ jobs:
       - run: pip install -r requirements.txt
       - run: ruff check
       - run: pyright
-      - run: python -m nuitka --standalone --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter --assume-yes-for-downloads meta_assistant.py
+      - run: python -m pytest tests/
+      - run: python -m nuitka --standalone --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter --assume-yes-for-downloads meta_assistant
       - run: Compress-Archive -Path dist\meta_assistant.dist\* -DestinationPath meta-assistant-${{ github.ref_name }}.zip
       - uses: softprops/action-gh-release@v2
         with:

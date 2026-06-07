@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0] - 2026-06-08
+
+### Changed
+- Refactor single-file `meta_assistant.py` into `meta_assistant/` package with 6 modules
+- Extract `ScriptScanner` — directory tree walker with case-insensitive ignore-dir filtering and cache, replacing duplicate traversal in menu building and script listing
+- Extract `JsonFile[T]` — generic JSON persistence replacing shallow `JsonStore` + repetitive `from_json`/`to_json`/`default` protocol
+- Extract `ScriptRunner` with typed `LaunchResult` — subprocess launch logic separated from stat tracking and orchestration
+- Extract `TkDialogBridge` — thread-safe tkinter dialog bridge extracted from main class
+
+### Added
+- Test suite (`tests/`) with 23 tests covering scanning, persistence, and runner modules
+- Pystray type stubs (`typings/pystray/__init__.pyi`) for pyright strict mode
+- `types-Pillow` dependency for pyright type checking
+- `pytest` runner to CI and release workflows
+
+### Build
+- Update Nuitka build command and pyright include to reference `meta_assistant` package instead of single file
+
 ## [1.1.3] - 2026-06-05
 
 ### Changed
