@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1] - 2026-06-08
+
+### Changed
+- Rebrand tray icon title, welcome dialog, and log output from "Assistant Launcher" to "Meta Assistant"
+- Update README title and add project poster image
+
 ## [1.2.0] - 2026-06-08
 
 ### Changed
