@@ -1,4 +1,4 @@
-# Assistant Launcher — Domain Context
+# Meta Assistant — Domain Context
 
 ## Glossary
 

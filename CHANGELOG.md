@@ -3,6 +3,7 @@
 ## [1.2.0] - 2026-06-08
 
 ### Changed
+- Rebrand display strings from "Assistant Launcher" to "Meta Assistant" across README, tray icon, and logs
 - Refactor single-file `meta_assistant.py` into `meta_assistant/` package with 6 modules
 - Extract `ScriptScanner` — directory tree walker with case-insensitive ignore-dir filtering and cache, replacing duplicate traversal in menu building and script listing
 - Extract `JsonFile[T]` — generic JSON persistence replacing shallow `JsonStore` + repetitive `from_json`/`to_json`/`default` protocol

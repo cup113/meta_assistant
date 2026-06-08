@@ -168,7 +168,7 @@ class MetaAssistantApp:
             level=logging.INFO,
             format="%(asctime)s [%(levelname)s] %(message)s",
         )
-        logging.info("Assistant Launcher v%s", __version__)
+        logging.info("Meta Assistant v%s", __version__)
 
     def _save_config(self) -> None:
         self._config_store.save(self.config)
@@ -406,7 +406,7 @@ class MetaAssistantApp:
         items: list[MenuItem] = []
 
         if self._is_first_run:
-            items.append(MenuItem("\U0001f44b Welcome to Assistant Launcher", _noop, enabled=False))
+            items.append(MenuItem("\U0001f44b Welcome to Meta Assistant", _noop, enabled=False))
             items.append(Menu.SEPARATOR)
             items.append(MenuItem("\U0001f4c2 Choose Target Directory...", self.choose_target_dir))
             items.append(MenuItem("\u2699\ufe0f Settings", Menu(*self.build_settings_menu())))
@@ -460,7 +460,7 @@ class MetaAssistantApp:
         icon = Icon(
             APP_NAME,
             self.load_icon_image(),
-            title="Assistant Launcher",
+            title="Meta Assistant",
             menu=Menu(lambda: self.build_main_menu()),
         )
         icon.run_detached()
