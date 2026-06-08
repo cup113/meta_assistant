@@ -11,11 +11,12 @@
 ## Features
 
 - **Dynamic Tray Menu**: Automatically scans and lists all Python scripts in your target directory, preserving folder hierarchy.
+- **Package-Aware Scanning**: Detects Python packages (`__init__.py`); packages with `__main__.py` get a "▶ Run" submenu entry (via `python -m`), and `_`-prefixed internal modules are hidden for a cleaner menu.
+- **Virtual Environment Detection**: Automatically finds and uses `.venv`/`venv` Python interpreters when launching scripts.
 - **Smart Exclusions**: Ignores common non-script directories (`node_modules`, `venv`, `.git`, etc.) with an editable ignore list.
 - **Recent Files**: Quick access to the 10 most recently launched scripts.
 - **Configuration GUI**: Change target directory, edit `config.json`, manage ignored folders, and refresh the menu without leaving the tray.
 - **Auto-start**: Optional Windows autostart when run as a frozen executable.
-- **Script Autostart**: Configure a script to run automatically when the application starts.
 - **Lightweight**: Minimal resource usage; runs silently in the background.
 
 ## Installation

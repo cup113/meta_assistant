@@ -21,6 +21,9 @@ class MenuItem:
         action: Callable[[Icon, MenuItem], None] | Menu | None = None,
         *,
         checked: Callable[[MenuItem], bool] | None = None,
+        radio: bool = False,
+        default: bool = False,
+        visible: bool = True,
         enabled: bool = True,
     ) -> None: ...
 

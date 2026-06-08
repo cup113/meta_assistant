@@ -27,7 +27,7 @@ from meta_assistant._persist import JsonFile
 from meta_assistant._runner import ScriptRunner
 from meta_assistant._scanner import PY_EXTS, ScriptNode, ScriptScanner
 
-__version__ = "1.2.1"
+__version__ = "1.3.0"
 
 APP_NAME = "MetaAssistant"
 APP_EXE_PATH = Path(argv[0]).absolute()
@@ -215,7 +215,20 @@ class MetaAssistantApp:
     def _make_launch_callback(self, path_str: str) -> Callable[[Any, MenuItem], None]:
         return lambda _icon, _item: self.launch(path_str)
 
-    def _make_remove_ignore_callback(self, dir_name: str) -> Callable[[Any, MenuItem], None]:
+    def launch_module(self, module_name: str, cwd: Path) -> None:
+        logging.info("Launching module: %s (cwd=%s)", module_name, cwd)
+        result = self._runner.run_as_module(module_name, cwd)
+        if result.error is not None:
+            logging.warning("Module launch failed: %s", result.error)
+
+    def _make_launch_module_callback(
+        self, module_name: str, cwd: Path
+    ) -> Callable[[Any, MenuItem], None]:
+        return lambda _icon, _item: self.launch_module(module_name, cwd)
+
+    def _make_remove_ignore_callback(
+        self, dir_name: str
+    ) -> Callable[[Any, MenuItem], None]:
         return lambda icon, _item: self.remove_ignore_dir(icon, dir_name)
 
     def _make_set_autostart_callback(self, path_str: str) -> Callable[[Any, MenuItem], None]:
@@ -243,7 +256,24 @@ class MetaAssistantApp:
     def _build_menu_from_tree(self, nodes: list[ScriptNode]) -> list[MenuItem]:
         items: list[MenuItem] = []
         for node in nodes:
-            if node.children:
+            if node.run_module:
+                sub_items: list[MenuItem] = [
+                    MenuItem(
+                        f"\u25b6 Run {self.format_name(node.path.stem, is_pyw=False).strip()}",
+                        self._make_launch_module_callback(node.run_module, node.path),
+                        default=True,
+                    ),
+                ]
+                if node.children:
+                    sub_items.append(Menu.SEPARATOR)
+                    sub_items.extend(self._build_menu_from_tree(node.children))
+                items.append(
+                    MenuItem(
+                        self.format_name(node.path.name, is_dir=True),
+                        Menu(*sub_items),
+                    )
+                )
+            elif node.children:
                 items.append(
                     MenuItem(
                         self.format_name(node.path.name, is_dir=True),
@@ -384,17 +414,9 @@ class MetaAssistantApp:
         if not ignore_items:
             ignore_items.append(MenuItem("No ignored folders", _noop, enabled=False))
 
-        autostart_label = (
-            f"\u26a1 Autostart ({len(self.config.autostart_scripts)}): "
-            + ", ".join(Path(s).stem for s in self.config.autostart_scripts)
-            if self.config.autostart_scripts
-            else "None"
-        )
-
         return [
             MenuItem(f"\U0001f4cd Current Target: {self.config.target_dir}", _noop, enabled=False),
             MenuItem(f"\U0001f4cc v{__version__}", _noop, enabled=False),
-            MenuItem(autostart_label, _noop, enabled=False),
             MenuItem("\U0001f4c2 Choose Target Directory...", self.choose_target_dir),
             MenuItem("\U0001f4c4 Open Config File", self.open_config_file),
             MenuItem("\U0001f504 Reload Config", self.refresh_menu),

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] - 2026-06-08
+
+### Added
+- Package-aware scanning: `ScriptScanner` now detects Python packages (directories with `__init__.py`), folds those with `__main__.py` into a single "▶ Run" submenu entry with `python -m` support, and filters out `_`-prefixed internal modules for a cleaner menu
+- Virtual environment support: `ScriptRunner._resolve_python()` walks up the directory tree to find `.venv`/`venv/Scripts/python.exe`, preferring it over the system Python for launching scripts
+- Menu item grouping: package directories are rendered as expandable submenus with a bold "▶ Run Package" default action as the first item
+
+### Removed
+- Remove `⚡ Autostart (N): ...` summary label from Settings menu; the per-script autostart toggle submenu remains functional
+
 ## [1.2.1] - 2026-06-08
 
 ### Changed
