@@ -1,11 +1,3 @@
-# runtime
 pystray
 pillow
 types-Pillow
-
-# dev / ci
-ruff
-pyright
-pytest
-nuitka
-zstandard
