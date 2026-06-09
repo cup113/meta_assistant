@@ -1,9 +1,21 @@
 # Changelog
 
+## [1.3.3] - 2026-06-09
+
+### Build
+- Nuitka: replace fake `--windows-installer=inno` with true `--standalone` + `iscc` two-step flow
+- Add `--windows-icon-from-ico=assistant.ico` to set exe icon
+- Add `installer.iss` with proper AppId and preprocessor-based versioning
+
 ## [1.3.2] - 2026-06-09
 
+### Fixed
+- Replace fake `--windows-installer=inno` Nuitka option with correct `--standalone` + Inno Setup (`iscc`) two-step build
+- Use `--windows-icon-from-ico` (real Nuitka option) to set exe icon
+
 ### Added
-- Inno Setup installer build in CI and local build script
+- `installer.iss` — Inno Setup script with proper `AppId` (generated via `uuid.uuid4()`), version passed via preprocessor variable
+- nuitka-build skill: 4 lessons covering `--windows-installer` nonexistence, ISS version variable distinction, `AppId` UUID requirement, and `--windows-icon-from-ico`
 
 ### Removed
 - Remove "ignore dir" remove-buttons from settings menu; ignored directories displayed as read-only items

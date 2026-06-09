@@ -27,7 +27,7 @@ from meta_assistant._persist import JsonFile
 from meta_assistant._runner import ScriptRunner
 from meta_assistant._scanner import PY_EXTS, ScriptNode, ScriptScanner
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 
 APP_NAME = "MetaAssistant"
 APP_EXE_PATH = Path(argv[0]).absolute()
