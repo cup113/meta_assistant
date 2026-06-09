@@ -27,7 +27,7 @@ from meta_assistant._persist import JsonFile
 from meta_assistant._runner import ScriptRunner
 from meta_assistant._scanner import PY_EXTS, ScriptNode, ScriptScanner
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 APP_NAME = "MetaAssistant"
 APP_EXE_PATH = Path(argv[0]).absolute()
@@ -226,9 +226,6 @@ class MetaAssistantApp:
     ) -> Callable[[Any, MenuItem], None]:
         return lambda _icon, _item: self.launch_module(module_name, cwd)
 
-    def _make_remove_ignore_callback(self, dir_name: str) -> Callable[[Any, MenuItem], None]:
-        return lambda icon, _item: self.remove_ignore_dir(icon, dir_name)
-
     def _make_set_autostart_callback(self, path_str: str) -> Callable[[Any, MenuItem], None]:
         return lambda icon, _item: self._toggle_autostart_script(icon, path_str)
 
@@ -359,16 +356,6 @@ class MetaAssistantApp:
             self._save_config()
             self.refresh_state(icon)
 
-    def remove_ignore_dir(self, icon: Any, dir_name: str) -> None:
-        to_remove = next(
-            (d for d in self.config.ignore_dirs if d.lower() == dir_name.lower()),
-            None,
-        )
-        if to_remove is not None:
-            self.config.ignore_dirs.remove(to_remove)
-            self._save_config()
-            self.refresh_state(icon)
-
     def refresh_menu(self, icon: Any, _item: MenuItem) -> None:
         self.refresh_state(icon)
 
@@ -408,7 +395,7 @@ class MetaAssistantApp:
 
     def build_settings_menu(self) -> list[MenuItem]:
         ignore_items = [
-            MenuItem(f"\u2796 {name}", self._make_remove_ignore_callback(name))
+            MenuItem(f"\U0001f4c1 {name}", _noop, enabled=False)
             for name in sorted(self.config.ignore_dirs)
         ]
         if not ignore_items:

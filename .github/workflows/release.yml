@@ -18,10 +18,11 @@ jobs:
       - run: ruff check
       - run: pyright
       - run: python -m pytest tests/
+      - run: choco install innosetup --no-progress
       - run: pip install nuitka
-      - run: python -m nuitka --standalone --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter --assume-yes-for-downloads meta_assistant
-      - run: Compress-Archive -Path dist\meta_assistant.dist\* -DestinationPath meta-assistant-${{ github.ref_name }}.zip
+      - run: python -m nuitka --windows-installer=inno --windows-console-mode=disable --include-data-files=assistant.ico=./assistant.ico --output-dir=dist --enable-plugin=tk-inter --assume-yes-for-downloads meta_assistant
+      - run: Get-ChildItem -Path dist\*-setup.exe | Move-Item -Destination "meta-assistant-${{ github.ref_name }}-setup.exe"
       - uses: softprops/action-gh-release@v2
         with:
-          files: meta-assistant-*.zip
+          files: meta-assistant-*-setup.exe
           generate_release_notes: true

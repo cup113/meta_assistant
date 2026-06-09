@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.2] - 2026-06-09
+
+### Added
+- Inno Setup installer build in CI and local build script
+
+### Removed
+- Remove "ignore dir" remove-buttons from settings menu; ignored directories displayed as read-only items
+
+### Build
+- Split dev and build dependencies to speed up CI
+
 ## [1.3.1] - 2026-06-09
 
 ### Fixed
