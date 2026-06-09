@@ -3,6 +3,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/cup113/meta_assistant/ci.yml?branch=main&logo=github)](https://github.com/cup113/meta_assistant/actions)
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python)](https://www.python.org)
 [![Platform](https://img.shields.io/badge/platform-windows-lightgrey?logo=windows)](.)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/cup113/meta_assistant)
 
 **Meta Assistant** is a Windows system tray application that provides instant access to Python scripts (`.py`/`.pyw`) within a designated project directory. It dynamically builds a hierarchical menu from your file structure, excludes common development folders (like `node_modules`, `venv`, `.git`), tracks recently launched scripts, and offers configuration management—all from a lightweight tray icon.
 
