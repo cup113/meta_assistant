@@ -27,7 +27,7 @@ from meta_assistant._persist import JsonFile
 from meta_assistant._runner import ScriptRunner
 from meta_assistant._scanner import PY_EXTS, ScriptNode, ScriptScanner
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 APP_NAME = "MetaAssistant"
 APP_EXE_PATH = Path(argv[0]).absolute()
@@ -226,9 +226,7 @@ class MetaAssistantApp:
     ) -> Callable[[Any, MenuItem], None]:
         return lambda _icon, _item: self.launch_module(module_name, cwd)
 
-    def _make_remove_ignore_callback(
-        self, dir_name: str
-    ) -> Callable[[Any, MenuItem], None]:
+    def _make_remove_ignore_callback(self, dir_name: str) -> Callable[[Any, MenuItem], None]:
         return lambda icon, _item: self.remove_ignore_dir(icon, dir_name)
 
     def _make_set_autostart_callback(self, path_str: str) -> Callable[[Any, MenuItem], None]:
@@ -260,7 +258,9 @@ class MetaAssistantApp:
                 sub_items: list[MenuItem] = [
                     MenuItem(
                         f"\u25b6 Run {self.format_name(node.path.stem, is_pyw=False).strip()}",
-                        self._make_launch_module_callback(node.run_module, ScriptRunner.module_cwd(node.path)),
+                        self._make_launch_module_callback(
+                            node.run_module, ScriptRunner.module_cwd(node.path)
+                        ),
                         default=True,
                     ),
                 ]

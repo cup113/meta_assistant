@@ -86,9 +86,7 @@ class ScriptScanner:
             if is_pkg:
                 children = self._collect_children(directory, is_pkg=True)
                 if has_main:
-                    children = [
-                        c for c in children if c.path.name != "__main__.py"
-                    ]
+                    children = [c for c in children if c.path.name != "__main__.py"]
                 if not children and not has_main:
                     return nodes
                 pkg_name = directory.name
