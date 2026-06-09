@@ -260,7 +260,7 @@ class MetaAssistantApp:
                 sub_items: list[MenuItem] = [
                     MenuItem(
                         f"\u25b6 Run {self.format_name(node.path.stem, is_pyw=False).strip()}",
-                        self._make_launch_module_callback(node.run_module, node.path),
+                        self._make_launch_module_callback(node.run_module, ScriptRunner.module_cwd(node.path)),
                         default=True,
                     ),
                 ]

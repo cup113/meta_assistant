@@ -7,6 +7,9 @@
 - Virtual environment support: `ScriptRunner._resolve_python()` walks up the directory tree to find `.venv`/`venv/Scripts/python.exe`, preferring it over the system Python for launching scripts
 - Menu item grouping: package directories are rendered as expandable submenus with a bold "▶ Run Package" default action as the first item
 
+### Fixed
+- Fix `python -m` package launch failing with `ModuleNotFoundError` because `cwd` was set to the package directory instead of its parent; extracted `ScriptRunner.module_cwd()` to encapsulate the correct path computation
+
 ### Removed
 - Remove `⚡ Autostart (N): ...` summary label from Settings menu; the per-script autostart toggle submenu remains functional
 

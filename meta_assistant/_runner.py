@@ -69,6 +69,10 @@ class ScriptRunner:
             return LaunchResult(error=f"Failed launching script: {e}")
 
     @staticmethod
+    def module_cwd(package_path: Path) -> Path:
+        return package_path.parent
+
+    @staticmethod
     def run_as_module(module_name: str, cwd: Path) -> LaunchResult:
         exe_path = ScriptRunner._resolve_python(cwd)
         log_msg = f"{exe_path} -m {module_name} (cwd={cwd})"

@@ -37,9 +37,14 @@ def test_returns_error_for_supported_extension_but_no_exe(tmp_path: Path) -> Non
 
 def test_run_as_module_returns_result(tmp_path: Path) -> None:
     runner = ScriptRunner()
-    result = runner.run_as_module("this.does.not.exist", tmp_path)
+    result = runner.run_as_module("_nonexistent_module_that_does_not_exist_", tmp_path)
     # Should return a result (with process or error), not crash
     assert result.error is not None or result.process is not None
+
+
+def test_module_cwd_returns_parent(tmp_path: Path) -> None:
+    pkg_dir = tmp_path / "mypkg"
+    assert ScriptRunner.module_cwd(pkg_dir) == tmp_path
 
 
 def test_resolve_python_finds_venv(tmp_path: Path) -> None:
